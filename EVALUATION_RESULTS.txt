@@ -1,0 +1,66 @@
+                                                                         query expected retrieved  score  top1_correct  top3_correct  retrieval_mode
+                 I forgot my login credentials and need a password reset link.   FAQ001    FAQ001 0.5903          True          True TF-IDF baseline
+                       How can I move my account to a different email address?   FAQ002    FAQ002 0.3631          True          True TF-IDF baseline
+               There are suspicious changes on my profile that I did not make.   FAQ003    FAQ002 0.2756         False         False TF-IDF baseline
+                       How do I request that my profile and account be erased?   FAQ004    FAQ002 0.3690         False          True TF-IDF baseline
+                           The order is still processing; can I cancel it now?   FAQ005    FAQ005 0.4984          True          True TF-IDF baseline
+                     I need the courier tracking number for an order I placed.   FAQ006    FAQ006 0.2013          True          True TF-IDF baseline
+                 Can the destination be corrected before my parcel is shipped?   FAQ007    FAQ005 0.2039         False         False TF-IDF baseline
+             The courier marked it delivered, but I never received the parcel.   FAQ008    FAQ008 0.2736          True          True TF-IDF baseline
+                   How many business days does standard shipping usually need?   FAQ009    FAQ009 0.5107          True          True TF-IDF baseline
+            What is the estimated transit time for the faster shipping option?   FAQ010    FAQ009 0.2347         False          True TF-IDF baseline
+                             Does standard shipping include Sunday deliveries?   FAQ011    FAQ009 0.3964         False          True TF-IDF baseline
+                                 Are overseas shipping destinations supported?   FAQ012    FAQ044 0.2330         False         False TF-IDF baseline
+             Is an item delivered ten days ago still inside the return window?   FAQ013    FAQ013 0.2415          True          True TF-IDF baseline
+                      I opened the box already. Can the product still go back?   FAQ014    FAQ014 0.4015          True          True TF-IDF baseline
+                        Where in My Orders can I begin sending something back?   FAQ015    FAQ006 0.1140         False         False TF-IDF baseline
+                                Who is responsible for the return courier fee?   FAQ016    FAQ016 0.3187          True          True TF-IDF baseline
+      How soon after inspection does the support team initiate the money back?   FAQ017    FAQ019 0.1692         False          True TF-IDF baseline
+               Does the refund return to the same card I originally paid with?   FAQ018    FAQ018 0.3081          True          True TF-IDF baseline
+        My bank processing time has passed and the promised refund is missing.   FAQ019    FAQ017 0.4083         False          True TF-IDF baseline
+                   What forms of electronic payment are supported at checkout?   FAQ020    FAQ020 0.2869          True          True TF-IDF baseline
+                                  Is payment on delivery available in my area?   FAQ021    FAQ021 0.3260          True          True TF-IDF baseline
+               The bank is refusing my checkout transaction. What can I check?   FAQ022    FAQ023 0.2197         False         False TF-IDF baseline
+                        My statement has duplicate transactions for one order.   FAQ023    FAQ023 0.3736          True          True TF-IDF baseline
+                 Are full credit-card details saved inside the support system?   FAQ024    FAQ024 0.2423          True          True TF-IDF baseline
+                         Where is the live inventory status shown for an item?   FAQ025    FAQ025 0.1936          True          True TF-IDF baseline
+                        Can I reserve something that currently has zero stock?   FAQ026    FAQ026 0.4147          True          True TF-IDF baseline
+             I ordered one product but a completely different product arrived.   FAQ027    FAQ025 0.2280         False          True TF-IDF baseline
+                   The item was damaged inside the package when I received it.   FAQ028    FAQ028 0.3258          True          True TF-IDF baseline
+                                Where do I see the warranty terms for an item?   FAQ029    FAQ029 0.3462          True          True TF-IDF baseline
+                     I need to claim warranty service for a purchased product.   FAQ030    FAQ030 0.4165          True          True TF-IDF baseline
+                            How do I redeem a promotional coupon before I pay?   FAQ031    FAQ031 0.3054          True          True TF-IDF baseline
+                 My voucher meets the order value but it still will not apply.   FAQ032    FAQ032 0.1394          True          True TF-IDF baseline
+                                Can two separate discount vouchers be stacked?   FAQ033    FAQ042 0.2649         False         False TF-IDF baseline
+      How can I make a data-access request for information associated with me?   FAQ034    FAQ034 0.2426          True          True TF-IDF baseline
+                 Who should review a complaint about privacy or personal data?   FAQ035    FAQ034 0.4756         False          True TF-IDF baseline
+            The mobile application is stuck and does not load the home screen.   FAQ036    FAQ024 0.1757         False         False TF-IDF baseline
+                  I requested verification several times but no email arrived.   FAQ037    FAQ037 0.3001          True          True TF-IDF baseline
+                  There is a technical failure on the payment checkout screen.   FAQ038    FAQ038 0.4252          True          True TF-IDF baseline
+                                  Where can a customer open a support request?   FAQ039    FAQ039 0.2313          True          True TF-IDF baseline
+       I have a security problem and need a real person instead of automation.   FAQ040    FAQ040 0.2897          True          True TF-IDF baseline
+                             I need an official receipt for a completed order.   FAQ041    FAQ041 0.3531          True          True TF-IDF baseline
+     I got two tracking numbers for one order; is it being shipped separately?   FAQ042    FAQ042 0.2977          True          True TF-IDF baseline
+             Tracking has not moved and my delivery date was several days ago.   FAQ043    FAQ043 0.3280          True          True TF-IDF baseline
+            The order has not shipped yet; can I switch it to faster delivery?   FAQ044    FAQ007 0.2856         False          True TF-IDF baseline
+          Does the returns process support replacing an item with another one?   FAQ045    FAQ045 0.2044          True          True TF-IDF baseline
+                     Only some of the expected money came back from my return.   FAQ046    FAQ019 0.1720         False          True TF-IDF baseline
+        Why does my bank show an authorization when checkout did not complete?   FAQ047    FAQ047 0.2683          True          True TF-IDF baseline
+                I need the dimensions and compatibility details before buying.   FAQ048    FAQ048 0.3456          True          True TF-IDF baseline
+                 Will checkout accept store value plus a promotional discount?   FAQ049    FAQ031 0.2508         False          True TF-IDF baseline
+              How can I turn on an additional authentication step for sign in?   FAQ050    FAQ050 0.2460          True          True TF-IDF baseline
+I urgently need help because somebody took over my account and changed details   FAQ003    FAQ002 0.1812         False          True TF-IDF baseline
+            Can I still stop my purchase if the warehouse has not sent it yet?   FAQ005    FAQ005 0.1775          True          True TF-IDF baseline
+                                   Normal delivery time in working days please   FAQ009    FAQ009 0.4344          True          True TF-IDF baseline
+     The product is fine but I changed my mind after 12 days. Can I return it?   FAQ013    FAQ016 0.2303         False          True TF-IDF baseline
+                           Which place will the refunded money be credited to?   FAQ018    FAQ019 0.1839         False          True TF-IDF baseline
+                             My debit card shows the exact same purchase twice   FAQ023    FAQ023 0.1579          True          True TF-IDF baseline
+                          Coupon field keeps rejecting the promotion I entered   FAQ032    FAQ031 0.3367         False         False TF-IDF baseline
+                I never got the parcel even though tracking says it reached me   FAQ008    FAQ008 0.2729          True          True TF-IDF baseline
+               I paid but checkout crashed and the bank amount is only pending   FAQ047    FAQ047 0.2560          True          True TF-IDF baseline
+         Can a support agent investigate why only part of my refund came back?   FAQ046    FAQ046 0.2443          True          True TF-IDF baseline
+
+Requested mode: tfidf
+Actual mode: TF-IDF baseline
+Top-1 accuracy: 65.0% (39/60)
+Top-3 accuracy: 86.7% (52/60)

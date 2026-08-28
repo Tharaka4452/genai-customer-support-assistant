@@ -1,0 +1,7 @@
+streamlit>=1.42
+google-genai>=1.0
+pandas>=2.2
+numpy>=1.26
+scikit-learn>=1.5
+python-dotenv>=1.0
+pytest>=8.0

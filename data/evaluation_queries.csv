@@ -1,0 +1,61 @@
+query,expected_policy_id,test_type
+I forgot my login credentials and need a password reset link.,FAQ001,held_out_paraphrase
+How can I move my account to a different email address?,FAQ002,held_out_paraphrase
+There are suspicious changes on my profile that I did not make.,FAQ003,held_out_paraphrase
+How do I request that my profile and account be erased?,FAQ004,held_out_paraphrase
+The order is still processing; can I cancel it now?,FAQ005,held_out_paraphrase
+I need the courier tracking number for an order I placed.,FAQ006,held_out_paraphrase
+Can the destination be corrected before my parcel is shipped?,FAQ007,held_out_paraphrase
+"The courier marked it delivered, but I never received the parcel.",FAQ008,held_out_paraphrase
+How many business days does standard shipping usually need?,FAQ009,held_out_paraphrase
+What is the estimated transit time for the faster shipping option?,FAQ010,held_out_paraphrase
+Does standard shipping include Sunday deliveries?,FAQ011,held_out_paraphrase
+Are overseas shipping destinations supported?,FAQ012,held_out_paraphrase
+Is an item delivered ten days ago still inside the return window?,FAQ013,held_out_paraphrase
+I opened the box already. Can the product still go back?,FAQ014,held_out_paraphrase
+Where in My Orders can I begin sending something back?,FAQ015,held_out_paraphrase
+Who is responsible for the return courier fee?,FAQ016,held_out_paraphrase
+How soon after inspection does the support team initiate the money back?,FAQ017,held_out_paraphrase
+Does the refund return to the same card I originally paid with?,FAQ018,held_out_paraphrase
+My bank processing time has passed and the promised refund is missing.,FAQ019,held_out_paraphrase
+What forms of electronic payment are supported at checkout?,FAQ020,held_out_paraphrase
+Is payment on delivery available in my area?,FAQ021,held_out_paraphrase
+The bank is refusing my checkout transaction. What can I check?,FAQ022,held_out_paraphrase
+My statement has duplicate transactions for one order.,FAQ023,held_out_paraphrase
+Are full credit-card details saved inside the support system?,FAQ024,held_out_paraphrase
+Where is the live inventory status shown for an item?,FAQ025,held_out_paraphrase
+Can I reserve something that currently has zero stock?,FAQ026,held_out_paraphrase
+I ordered one product but a completely different product arrived.,FAQ027,held_out_paraphrase
+The item was damaged inside the package when I received it.,FAQ028,held_out_paraphrase
+Where do I see the warranty terms for an item?,FAQ029,held_out_paraphrase
+I need to claim warranty service for a purchased product.,FAQ030,held_out_paraphrase
+How do I redeem a promotional coupon before I pay?,FAQ031,held_out_paraphrase
+My voucher meets the order value but it still will not apply.,FAQ032,held_out_paraphrase
+Can two separate discount vouchers be stacked?,FAQ033,held_out_paraphrase
+How can I make a data-access request for information associated with me?,FAQ034,held_out_paraphrase
+Who should review a complaint about privacy or personal data?,FAQ035,held_out_paraphrase
+The mobile application is stuck and does not load the home screen.,FAQ036,held_out_paraphrase
+I requested verification several times but no email arrived.,FAQ037,held_out_paraphrase
+There is a technical failure on the payment checkout screen.,FAQ038,held_out_paraphrase
+Where can a customer open a support request?,FAQ039,held_out_paraphrase
+I have a security problem and need a real person instead of automation.,FAQ040,held_out_paraphrase
+I need an official receipt for a completed order.,FAQ041,held_out_paraphrase
+I got two tracking numbers for one order; is it being shipped separately?,FAQ042,held_out_paraphrase
+Tracking has not moved and my delivery date was several days ago.,FAQ043,held_out_paraphrase
+The order has not shipped yet; can I switch it to faster delivery?,FAQ044,held_out_paraphrase
+Does the returns process support replacing an item with another one?,FAQ045,held_out_paraphrase
+Only some of the expected money came back from my return.,FAQ046,held_out_paraphrase
+Why does my bank show an authorization when checkout did not complete?,FAQ047,held_out_paraphrase
+I need the dimensions and compatibility details before buying.,FAQ048,held_out_paraphrase
+Will checkout accept store value plus a promotional discount?,FAQ049,held_out_paraphrase
+How can I turn on an additional authentication step for sign in?,FAQ050,held_out_paraphrase
+I urgently need help because somebody took over my account and changed details,FAQ003,noisy_or_multiword
+Can I still stop my purchase if the warehouse has not sent it yet?,FAQ005,noisy_or_multiword
+Normal delivery time in working days please,FAQ009,noisy_or_multiword
+The product is fine but I changed my mind after 12 days. Can I return it?,FAQ013,noisy_or_multiword
+Which place will the refunded money be credited to?,FAQ018,noisy_or_multiword
+My debit card shows the exact same purchase twice,FAQ023,noisy_or_multiword
+Coupon field keeps rejecting the promotion I entered,FAQ032,noisy_or_multiword
+I never got the parcel even though tracking says it reached me,FAQ008,noisy_or_multiword
+I paid but checkout crashed and the bank amount is only pending,FAQ047,noisy_or_multiword
+Can a support agent investigate why only part of my refund came back?,FAQ046,noisy_or_multiword
