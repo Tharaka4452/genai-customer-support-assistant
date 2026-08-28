@@ -1,5 +1,6 @@
 import hashlib
 import os
+import re
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -91,15 +92,31 @@ class KnowledgeBase:
         norms[norms == 0] = 1.0
         return matrix / norms
 
-    def _embed_texts(self, texts: List[str]) -> np.ndarray:
+    def _safe_error(self, exc: Exception) -> str:
+        """Return a useful diagnostic without ever exposing the API key."""
+        message = f"{type(exc).__name__}: {exc}"
+        api_key = os.getenv("GEMINI_API_KEY", "").strip()
+        if api_key:
+            message = message.replace(api_key, "[REDACTED]")
+        # Redact anything that looks like a Google API key as a second safety net.
+        message = re.sub(r"AIza[0-9A-Za-z_-]{20,}", "[REDACTED_API_KEY]", message)
+        return message[:700]
+
+    def _embed_texts(self, texts: List[str], task_type: str) -> np.ndarray:
         from google import genai
         from google.genai import types
+
+        if not texts:
+            return np.empty((0, self.embedding_dimension), dtype=np.float32)
 
         client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
         response = client.models.embed_content(
             model=self.embedding_model,
             contents=texts,
-            config=types.EmbedContentConfig(output_dimensionality=self.embedding_dimension),
+            config=types.EmbedContentConfig(
+                output_dimensionality=self.embedding_dimension,
+                task_type=task_type,
+            ),
         )
         vectors = [item.values for item in (response.embeddings or [])]
         if len(vectors) != len(texts):
@@ -107,6 +124,19 @@ class KnowledgeBase:
                 f"Gemini returned {len(vectors)} embeddings for {len(texts)} input texts."
             )
         return np.asarray(vectors, dtype=np.float32)
+
+    def embedding_healthcheck(self) -> tuple[bool, str]:
+        """Make one tiny embedding request so deployment issues are easy to diagnose."""
+        if not self.has_api_key:
+            return False, "GEMINI_API_KEY is not configured."
+        try:
+            vector = self._embed_texts(["customer support delivery question"], "RETRIEVAL_QUERY")
+            return (
+                vector.shape == (1, self.embedding_dimension),
+                f"Embedding API OK: {self.embedding_model} ({vector.shape[1]} dimensions)",
+            )
+        except Exception as exc:
+            return False, self._safe_error(exc)
 
     def _ensure_embedding_matrix(self) -> np.ndarray:
         if self._embedding_matrix is not None:
@@ -122,9 +152,14 @@ class KnowledgeBase:
 
         texts = self.df["search_text"].astype(str).tolist()
         vectors: List[np.ndarray] = []
-        batch_size = 100
+        # Keep requests small enough for hosted deployments and conservative API payload limits.
+        # 25 FAQ records are ~9 KB or less with this dataset, while still avoiding excessive calls.
+        batch_size = int(os.getenv("GEMINI_EMBEDDING_BATCH_SIZE", "25"))
+        batch_size = max(1, min(batch_size, 25))
         for start in range(0, len(texts), batch_size):
-            vectors.append(self._embed_texts(texts[start:start + batch_size]))
+            vectors.append(
+                self._embed_texts(texts[start:start + batch_size], "RETRIEVAL_DOCUMENT")
+            )
 
         matrix = self._normalize_rows(np.vstack(vectors))
         np.savez_compressed(cache_path, embeddings=matrix)
@@ -133,7 +168,7 @@ class KnowledgeBase:
 
     def _semantic_scores(self, query: str) -> np.ndarray:
         matrix = self._ensure_embedding_matrix()
-        q = self._embed_texts([query])
+        q = self._embed_texts([query], "RETRIEVAL_QUERY")
         q = self._normalize_rows(q)[0]
         return matrix @ q
 
@@ -207,7 +242,7 @@ class KnowledgeBase:
                 final = (0.40 * lexical_scaled) + (0.60 * semantic_scaled)
                 return self._collapse_results(final, lexical, semantic, top_k, "Hybrid: TF-IDF + Gemini embeddings")
             except Exception as exc:
-                self.last_retrieval_error = f"{type(exc).__name__}: {exc}"
+                self.last_retrieval_error = self._safe_error(exc)
                 return self._collapse_results(lexical, lexical, None, top_k, "TF-IDF fallback")
 
         return self._collapse_results(lexical, lexical, None, top_k, "TF-IDF baseline")

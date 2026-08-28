@@ -37,7 +37,7 @@ st.caption("Hybrid RAG • grounded LLM replies • policy guardrails • human 
 
 with st.sidebar:
     st.header("System configuration")
-    model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    model = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
     embedding_model = os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001")
     has_key = kb.has_api_key
     st.write(f"**Dataset:** {len(kb.df)} labeled FAQ records")
@@ -45,7 +45,14 @@ with st.sidebar:
     st.write(f"**LLM:** `{model}`")
     st.write(f"**Embeddings:** `{embedding_model}`")
     if has_key:
-        st.success("API key detected: LLM + semantic retrieval available")
+        st.success("Gemini API key detected")
+        if st.button("Test embedding API", use_container_width=True):
+            ok, detail = kb.embedding_healthcheck()
+            if ok:
+                st.success(detail)
+            else:
+                st.error("Embedding API test failed")
+                st.code(detail, language=None)
     else:
         st.warning("No API key: deterministic TF-IDF demo mode")
 
@@ -122,7 +129,9 @@ with tab_chat:
                 f"Top policy: {top.get('policy_id','N/A')}"
             )
             if kb.last_retrieval_error:
-                st.warning("Semantic retrieval was unavailable and the safe lexical fallback was used.")
+                st.warning("Semantic retrieval was unavailable; the safe TF-IDF fallback was used.")
+                with st.expander("Embedding diagnostic"):
+                    st.code(kb.last_retrieval_error, language=None)
 
             with st.expander("Evidence: retrieved approved policies", expanded=True):
                 for source in retrieved:
