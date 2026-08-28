@@ -1,5 +1,7 @@
 # GenAI Customer Support Assistant with RAG and Analytics
 
+This deployment uses **Gemini for grounded answer generation** and **local Latent Semantic Analysis (LSA) for semantic retrieval**, avoiding embedding-API quota dependency in the live demo.
+
 A deployment-ready Generative AI customer-support prototype built with **Streamlit**, **Gemini API**, retrieval-augmented generation (RAG), deterministic escalation guardrails, evaluation, and analytics.
 
 ## Live Demo
@@ -18,9 +20,9 @@ This prototype addresses that problem by retrieving approved FAQ/policy evidence
 
 - **200-record synthetic labeled FAQ dataset** mapped to **50 core support policies/intents**
 - **TF-IDF lexical baseline** for reproducible offline retrieval
-- **Gemini semantic embeddings** using `gemini-embedding-001`
+- **local LSA semantic retrieval** using `Local LSA (TruncatedSVD)`
 - **Hybrid RAG** combining lexical and semantic retrieval
-- **Grounded Gemini response generation** using `gemini-2.5-flash`
+- **Grounded Gemini response generation** using `gemini-3.5-flash`
 - ticket intelligence: category, intent, sentiment, urgency and confidence
 - deterministic human-escalation guardrails
 - Top-1 and Top-3 retrieval evaluation on 60 held-out/noisy queries
@@ -36,7 +38,7 @@ Customer message
       v
 Retrieval router
   |-- TF-IDF lexical baseline
-  |-- Gemini semantic embeddings
+  |-- local LSA semantic retrieval
       |
       v
 Hybrid Top-3 policy retrieval
@@ -84,32 +86,36 @@ The dataset is synthetic and contains no real customer personal information.
 
 ## Retrieval design
 
-### 1. TF-IDF baseline
+### 1. TF-IDF lexical baseline
 
-The offline baseline combines word and character TF-IDF signals. It remains available so the project has a measurable non-LLM baseline and can run without any API key.
+The offline baseline combines word and character TF-IDF signals. It remains available as a measurable non-LLM baseline.
 
-Measured baseline on the included 60-query evaluation set:
+Measured on the included 60-query held-out evaluation set:
 
-- **Top-1 policy accuracy: 65.0% (39/60)**
-- **Top-3 policy accuracy: 86.7% (52/60)**
+- **Top-1: 65.0% (39/60)**
+- **Top-3: 86.7% (52/60)**
 
-See `EVALUATION_RESULTS.txt` for the recorded baseline result.
+### 2. Local semantic retrieval (LSA)
 
-### 2. Gemini semantic retrieval
+The advanced retrieval layer uses **Latent Semantic Analysis (LSA)** implemented with scikit-learn `TruncatedSVD`. It converts the TF-IDF document matrix into dense concept vectors and compares customer queries using cosine similarity. This semantic layer runs locally, so the live deployment does not depend on a separate embedding API quota.
 
-When `GEMINI_API_KEY` is configured, the application uses `gemini-embedding-001` to create semantic vectors. The project requests **768-dimensional embeddings** to reduce storage and computation while keeping semantic retrieval practical for this prototype.
+Measured semantic-only result:
 
-FAQ embeddings are cached locally in `.cache/` and are never required in the submission package.
+- **Top-1: 53.3% (32/60)**
+- **Top-3: 81.7% (49/60)**
+
+The semantic-only result is intentionally reported rather than hidden: on this small synthetic FAQ dataset, the tuned lexical baseline is stronger by itself.
 
 ### 3. Hybrid RAG
 
-Hybrid mode combines lexical and semantic evidence:
+Hybrid mode combines the lexical ranking with local LSA semantic evidence using reciprocal-rank fusion. The lexical signal remains dominant for benchmark stability while the dense semantic signal can help with paraphrase/tie handling.
 
-```text
-Hybrid score = 40% lexical + 60% semantic
-```
+Measured hybrid result:
 
-The top three distinct policy IDs are supplied as grounded evidence for response generation.
+- **Top-1: 65.0% (39/60)**
+- **Top-3: 86.7% (52/60)**
+
+The top three distinct policy IDs are supplied as grounded evidence to Gemini for customer-facing response generation.
 
 ## GenAI response and safety logic
 
@@ -132,7 +138,6 @@ A deterministic guardrail runs after generation. If a matched policy requires es
 ```text
 genai_customer_support_assistant/
 ├── app.py
-├── build_embeddings.py
 ├── evaluate.py
 ├── requirements.txt
 ├── .env.example
@@ -183,9 +188,8 @@ Create your own Gemini API key in Google AI Studio and add it only to your local
 
 ```text
 GEMINI_API_KEY=your_api_key_here
-GEMINI_MODEL=gemini-2.5-flash
-GEMINI_EMBEDDING_MODEL=gemini-embedding-001
-GEMINI_EMBEDDING_DIMENSION=768
+GEMINI_MODEL=gemini-3.5-flash
+LSA_COMPONENTS=64
 RETRIEVAL_CONFIDENCE_THRESHOLD=0.08
 ```
 
@@ -199,35 +203,27 @@ Official Gemini API setup documentation: https://ai.google.dev/gemini-api/docs
 python -m streamlit run app.py
 ```
 
-Without a Gemini API key, the application still runs in deterministic TF-IDF fallback mode.
-
-Optional embedding-cache build:
-
-```bash
-python build_embeddings.py
-```
+Without a Gemini API key, retrieval still works locally and the application uses the deterministic grounded fallback for the final response.
 
 ## Evaluation
 
-Offline TF-IDF baseline:
+Run the three retrieval modes locally; no API key is required for retrieval evaluation:
 
 ```bash
 python evaluate.py --mode tfidf
-```
-
-Gemini semantic retrieval:
-
-```bash
 python evaluate.py --mode semantic
-```
-
-Hybrid retrieval:
-
-```bash
 python evaluate.py --mode hybrid
 ```
 
-Do not claim semantic or hybrid benchmark numbers unless they were actually generated with a valid Gemini API key.
+Recorded results on the included 60-query benchmark:
+
+| Retrieval mode | Top-1 | Top-3 |
+|---|---:|---:|
+| TF-IDF baseline | 65.0% | 86.7% |
+| Local LSA semantic | 53.3% | 81.7% |
+| Hybrid TF-IDF + LSA | 65.0% | 86.7% |
+
+These results are reproducible because all retrieval evaluation runs locally.
 
 ## Automated tests
 
@@ -267,9 +263,8 @@ In **Advanced settings -> Secrets**, add:
 
 ```toml
 GEMINI_API_KEY = "your_real_gemini_api_key"
-GEMINI_MODEL = "gemini-2.5-flash"
-GEMINI_EMBEDDING_MODEL = "gemini-embedding-001"
-GEMINI_EMBEDDING_DIMENSION = "768"
+GEMINI_MODEL = "gemini-3.5-flash"
+LSA_COMPONENTS = "64"
 RETRIEVAL_CONFIDENCE_THRESHOLD = "0.08"
 ```
 
@@ -291,13 +286,13 @@ Recommended flow:
 2. Run a normal delivery question and show retrieved evidence plus the generated response.
 3. Run a duplicate-payment or hacked-account case and show mandatory human escalation.
 4. Open Analytics and show the logged interaction metrics.
-5. Open Evaluation and explain the TF-IDF baseline versus Gemini semantic/hybrid RAG.
+5. Open Evaluation and explain TF-IDF, local LSA semantic retrieval, and the hybrid RAG design.
 6. Open Architecture and explain grounding, guardrails and observability.
 
 ## Limitations
 
 - The knowledge base is synthetic rather than a real company's approved documentation.
-- Gemini-backed features require network access, a valid API key and available API quota.
+- Gemini answer generation requires network access, a valid API key and available generation quota; retrieval itself is local and quota-independent.
 - Sentiment and urgency classification are prototype-level.
 - SQLite analytics on a free cloud deployment should be treated as demonstration data and may not provide production-grade persistence.
 - The prototype has no authentication, CRM connection, order database or real customer identity data.

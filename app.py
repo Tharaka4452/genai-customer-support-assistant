@@ -38,33 +38,26 @@ st.caption("Hybrid RAG • grounded LLM replies • policy guardrails • human 
 with st.sidebar:
     st.header("System configuration")
     model = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
-    embedding_model = os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001")
+    semantic_model = f"Local LSA ({kb.lsa_components}D)"
     has_key = kb.has_api_key
     st.write(f"**Dataset:** {len(kb.df)} labeled FAQ records")
     st.write(f"**Core policies/intents:** {kb.policy_count}")
     st.write(f"**LLM:** `{model}`")
-    st.write(f"**Embeddings:** `{embedding_model}`")
+    st.write(f"**Semantic retriever:** `{semantic_model}`")
     if has_key:
-        st.success("Gemini API key detected")
-        if st.button("Test embedding API", use_container_width=True):
-            ok, detail = kb.embedding_healthcheck()
-            if ok:
-                st.success(detail)
-            else:
-                st.error("Embedding API test failed")
-                st.code(detail, language=None)
+        st.success("Gemini API key detected: grounded LLM generation available")
     else:
-        st.warning("No API key: deterministic TF-IDF demo mode")
+        st.warning("No Gemini API key: retrieval still works; answers use deterministic grounded fallback")
 
     mode_label = st.selectbox(
         "Retrieval strategy",
-        ["Auto hybrid", "TF-IDF baseline", "Gemini embeddings", "Hybrid"],
+        ["Auto hybrid", "TF-IDF baseline", "Local semantic (LSA)", "Hybrid"],
         index=0,
-        help="Auto uses hybrid retrieval with an API key and safely falls back to TF-IDF otherwise.",
+        help="Auto uses local hybrid retrieval. Gemini API is used only for grounded answer generation.",
     )
     mode_map = {
         "Auto hybrid": "auto", "TF-IDF baseline": "tfidf",
-        "Gemini embeddings": "semantic", "Hybrid": "hybrid",
+        "Local semantic (LSA)": "semantic", "Hybrid": "hybrid",
     }
     retrieval_mode = mode_map[mode_label]
 
@@ -129,8 +122,8 @@ with tab_chat:
                 f"Top policy: {top.get('policy_id','N/A')}"
             )
             if kb.last_retrieval_error:
-                st.warning("Semantic retrieval was unavailable; the safe TF-IDF fallback was used.")
-                with st.expander("Embedding diagnostic"):
+                st.warning("Local semantic retrieval was unavailable; the safe TF-IDF fallback was used.")
+                with st.expander("Retrieval diagnostic"):
                     st.code(kb.last_retrieval_error, language=None)
 
             with st.expander("Evidence: retrieved approved policies", expanded=True):
@@ -220,7 +213,7 @@ with tab_eval:
     sample = eval_df.head(10).copy()
     st.dataframe(sample, use_container_width=True, hide_index=True)
     st.code("python evaluate.py --mode tfidf", language="bash")
-    st.code("python evaluate.py --mode hybrid  # requires GEMINI_API_KEY", language="bash")
+    st.code("python evaluate.py --mode hybrid  # fully local retrieval", language="bash")
     st.caption("This design makes the baseline-vs-semantic comparison reproducible during the demo.")
 
 with tab_data:
@@ -243,7 +236,7 @@ Customer Message
       ↓
 Retrieval Router
   ├─ TF-IDF lexical baseline
-  └─ Gemini semantic embeddings
+  └─ Local LSA semantic vectors
       ↓
 Hybrid Retrieval + Top-3 Policy Evidence
       ↓
@@ -263,7 +256,7 @@ SQLite Observability Log → Streamlit Analytics
     st.subheader("Why this is stronger than a basic chatbot")
     st.markdown("""
 - **Baseline + advanced comparison:** TF-IDF remains as a measurable lexical baseline.
-- **Semantic RAG:** Gemini embeddings can retrieve paraphrases that do not share the same keywords.
+- **Local semantic RAG:** Latent Semantic Analysis (TruncatedSVD) creates dense concept vectors without external embedding quota.
 - **Hybrid scoring:** lexical and semantic evidence are combined instead of relying on one signal.
 - **Policy-aware safety:** escalation labels from the dataset are enforced after LLM generation.
 - **Grounded answers:** the model is instructed to use only retrieved approved policy content.

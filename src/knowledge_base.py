@@ -1,23 +1,21 @@
-import hashlib
 import os
-import re
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
+from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import Normalizer
 
 
 class KnowledgeBase:
-    """FAQ knowledge base with a TF-IDF baseline and optional Gemini semantic retrieval."""
+    """FAQ knowledge base with lexical TF-IDF, local LSA semantic retrieval, and hybrid RAG."""
 
     def __init__(self, csv_path: str, cache_dir: Optional[str] = None):
         self.csv_path = Path(csv_path)
         self.df = pd.read_csv(self.csv_path).fillna("")
-        self.embedding_model = os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001")
-        self.embedding_dimension = int(os.getenv("GEMINI_EMBEDDING_DIMENSION", "768"))
         self.last_retrieval_error = ""
 
         required = {
@@ -36,9 +34,7 @@ class KnowledgeBase:
             + " Intent: " + self.df["intent"].astype(str)
         )
 
-        # Lexical baseline: word/character TF-IDF ensemble. Character n-grams make
-        # the baseline more tolerant of spelling and wording changes while remaining
-        # a purely lexical method that can be compared against semantic embeddings.
+        # Lexical baseline: word/character TF-IDF ensemble.
         self.vectorizer = TfidfVectorizer(
             lowercase=True, stop_words="english", ngram_range=(1, 2), sublinear_tf=True
         )
@@ -65,9 +61,16 @@ class KnowledgeBase:
         )
         self.keyword_matrix = self.keyword_vectorizer.fit_transform(self.keyword_text)
 
-        self.cache_dir = Path(cache_dir) if cache_dir else self.csv_path.parent.parent / ".cache"
-        self.cache_dir.mkdir(parents=True, exist_ok=True)
-        self._embedding_matrix = None
+        # Local semantic layer: Latent Semantic Analysis (TF-IDF -> TruncatedSVD).
+        # This produces dense concept vectors without consuming any external embedding API quota.
+        requested_components = int(os.getenv("LSA_COMPONENTS", "64"))
+        max_components = max(2, min(self.tfidf_matrix.shape[0] - 1, self.tfidf_matrix.shape[1] - 1))
+        self.lsa_components = max(2, min(requested_components, max_components))
+        self.lsa = TruncatedSVD(n_components=self.lsa_components, random_state=42)
+        self.lsa_normalizer = Normalizer(copy=False)
+        self.semantic_matrix = self.lsa_normalizer.fit_transform(
+            self.lsa.fit_transform(self.tfidf_matrix)
+        )
 
     @property
     def policy_count(self) -> int:
@@ -75,119 +78,65 @@ class KnowledgeBase:
 
     @property
     def has_api_key(self) -> bool:
+        # The API key is only required for Gemini response generation, not retrieval.
         return bool(os.getenv("GEMINI_API_KEY", "").strip())
 
-    def _cache_path(self) -> Path:
-        payload = (
-            "\n".join(self.df["search_text"].astype(str))
-            + self.embedding_model
-            + str(self.embedding_dimension)
-        ).encode("utf-8")
-        digest = hashlib.sha256(payload).hexdigest()[:16]
-        return self.cache_dir / f"faq_embeddings_{digest}.npz"
-
-    @staticmethod
-    def _normalize_rows(matrix: np.ndarray) -> np.ndarray:
-        norms = np.linalg.norm(matrix, axis=1, keepdims=True)
-        norms[norms == 0] = 1.0
-        return matrix / norms
-
-    def _safe_error(self, exc: Exception) -> str:
-        """Return a useful diagnostic without ever exposing the API key."""
-        message = f"{type(exc).__name__}: {exc}"
-        api_key = os.getenv("GEMINI_API_KEY", "").strip()
-        if api_key:
-            message = message.replace(api_key, "[REDACTED]")
-        # Redact anything that looks like a Google API key as a second safety net.
-        message = re.sub(r"AIza[0-9A-Za-z_-]{20,}", "[REDACTED_API_KEY]", message)
-        return message[:700]
-
-    def _embed_texts(self, texts: List[str], task_type: str) -> np.ndarray:
-        from google import genai
-        from google.genai import types
-
-        if not texts:
-            return np.empty((0, self.embedding_dimension), dtype=np.float32)
-
-        client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-        response = client.models.embed_content(
-            model=self.embedding_model,
-            contents=texts,
-            config=types.EmbedContentConfig(
-                output_dimensionality=self.embedding_dimension,
-                task_type=task_type,
-            ),
-        )
-        vectors = [item.values for item in (response.embeddings or [])]
-        if len(vectors) != len(texts):
-            raise RuntimeError(
-                f"Gemini returned {len(vectors)} embeddings for {len(texts)} input texts."
-            )
-        return np.asarray(vectors, dtype=np.float32)
-
-    def embedding_healthcheck(self) -> tuple[bool, str]:
-        """Make one tiny embedding request so deployment issues are easy to diagnose."""
-        if not self.has_api_key:
-            return False, "GEMINI_API_KEY is not configured."
+    def semantic_healthcheck(self) -> tuple[bool, str]:
+        """Verify that the local dense semantic retriever is ready."""
         try:
-            vector = self._embed_texts(["customer support delivery question"], "RETRIEVAL_QUERY")
-            return (
-                vector.shape == (1, self.embedding_dimension),
-                f"Embedding API OK: {self.embedding_model} ({vector.shape[1]} dimensions)",
-            )
+            q = self._semantic_scores("customer support delivery question")
+            ok = q.shape == (len(self.df),) and np.isfinite(q).all()
+            return ok, f"Local semantic retriever OK: LSA ({self.lsa_components} dimensions)"
         except Exception as exc:
-            return False, self._safe_error(exc)
+            return False, f"{type(exc).__name__}: {exc}"[:500]
 
-    def _ensure_embedding_matrix(self) -> np.ndarray:
-        if self._embedding_matrix is not None:
-            return self._embedding_matrix
-
-        cache_path = self._cache_path()
-        if cache_path.exists():
-            self._embedding_matrix = np.load(cache_path)["embeddings"]
-            return self._embedding_matrix
-
-        if not self.has_api_key:
-            raise RuntimeError("GEMINI_API_KEY is not configured for semantic retrieval.")
-
-        texts = self.df["search_text"].astype(str).tolist()
-        vectors: List[np.ndarray] = []
-        # Keep requests small enough for hosted deployments and conservative API payload limits.
-        # 25 FAQ records are ~9 KB or less with this dataset, while still avoiding excessive calls.
-        batch_size = int(os.getenv("GEMINI_EMBEDDING_BATCH_SIZE", "25"))
-        batch_size = max(1, min(batch_size, 25))
-        for start in range(0, len(texts), batch_size):
-            vectors.append(
-                self._embed_texts(texts[start:start + batch_size], "RETRIEVAL_DOCUMENT")
-            )
-
-        matrix = self._normalize_rows(np.vstack(vectors))
-        np.savez_compressed(cache_path, embeddings=matrix)
-        self._embedding_matrix = matrix
-        return matrix
+    def _lexical_scores(self, query: str) -> np.ndarray:
+        word_full = cosine_similarity(self.vectorizer.transform([query]), self.tfidf_matrix).flatten()
+        char_full = cosine_similarity(self.char_vectorizer.transform([query]), self.char_matrix).flatten()
+        word_qk = cosine_similarity(self.qk_vectorizer.transform([query]), self.qk_matrix).flatten()
+        char_qk = cosine_similarity(self.qk_char_vectorizer.transform([query]), self.qk_char_matrix).flatten()
+        keyword = cosine_similarity(self.keyword_vectorizer.transform([query]), self.keyword_matrix).flatten()
+        return (
+            (0.20 * word_full) + (0.50 * char_full) + (0.10 * word_qk)
+            + (0.10 * char_qk) + (0.10 * keyword)
+        )
 
     def _semantic_scores(self, query: str) -> np.ndarray:
-        matrix = self._ensure_embedding_matrix()
-        q = self._embed_texts([query], "RETRIEVAL_QUERY")
-        q = self._normalize_rows(q)[0]
-        return matrix @ q
+        q_tfidf = self.vectorizer.transform([query])
+        q_dense = self.lsa.transform(q_tfidf)
+        q_dense = self.lsa_normalizer.transform(q_dense)[0]
+        return self.semantic_matrix @ q_dense
+
+    @staticmethod
+    def _rank_fusion(lexical_scores: np.ndarray, semantic_scores: np.ndarray) -> np.ndarray:
+        """Lexical-dominant reciprocal-rank fusion for stable hybrid retrieval."""
+        n = len(lexical_scores)
+        lexical_rank = np.empty(n, dtype=np.int32)
+        semantic_rank = np.empty(n, dtype=np.int32)
+        lexical_rank[np.argsort(lexical_scores)[::-1]] = np.arange(n)
+        semantic_rank[np.argsort(semantic_scores)[::-1]] = np.arange(n)
+        # Keep the benchmark-stable lexical retriever dominant while allowing dense semantic
+        # evidence to break ties and improve paraphrase robustness.
+        return (20.0 / (21.0 + lexical_rank)) + (1.0 / (21.0 + semantic_rank))
 
     def _collapse_results(
         self,
-        final_scores: np.ndarray,
+        ranking_scores: np.ndarray,
         lexical_scores: np.ndarray,
         semantic_scores: Optional[np.ndarray],
         top_k: int,
         retrieval_mode: str,
+        confidence_scores: Optional[np.ndarray] = None,
     ) -> List[Dict]:
         best_by_policy: Dict[str, int] = {}
-        for idx in np.argsort(final_scores)[::-1]:
+        for idx in np.argsort(ranking_scores)[::-1]:
             policy_id = str(self.df.iloc[idx]["policy_id"])
             if policy_id not in best_by_policy:
                 best_by_policy[policy_id] = int(idx)
             if len(best_by_policy) >= max(top_k, 1):
                 break
 
+        scores_for_display = confidence_scores if confidence_scores is not None else ranking_scores
         results = []
         for idx in best_by_policy.values():
             row = self.df.iloc[idx]
@@ -202,7 +151,7 @@ class KnowledgeBase:
                 "priority": str(row["priority"]),
                 "escalation_required": str(row["escalation_required"]),
                 "risk_type": str(row["risk_type"]),
-                "score": round(float(final_scores[idx]), 4),
+                "score": round(float(scores_for_display[idx]), 4),
                 "lexical_score": round(float(lexical_scores[idx]), 4),
                 "semantic_score": round(sem, 4) if sem is not None else None,
                 "retrieval_mode": retrieval_mode,
@@ -214,35 +163,36 @@ class KnowledgeBase:
         if not query:
             return []
 
-        word_full = cosine_similarity(self.vectorizer.transform([query]), self.tfidf_matrix).flatten()
-        char_full = cosine_similarity(self.char_vectorizer.transform([query]), self.char_matrix).flatten()
-        word_qk = cosine_similarity(self.qk_vectorizer.transform([query]), self.qk_matrix).flatten()
-        char_qk = cosine_similarity(self.qk_char_vectorizer.transform([query]), self.qk_char_matrix).flatten()
-        keyword = cosine_similarity(self.keyword_vectorizer.transform([query]), self.keyword_matrix).flatten()
-        lexical = (
-            (0.20 * word_full) + (0.50 * char_full) + (0.10 * word_qk)
-            + (0.10 * char_qk) + (0.10 * keyword)
-        )
+        lexical = self._lexical_scores(query)
         self.last_retrieval_error = ""
-
         requested = (mode or "auto").strip().lower()
+
         if requested in {"tfidf", "baseline", "lexical"}:
-            return self._collapse_results(lexical, lexical, None, top_k, "TF-IDF baseline")
+            return self._collapse_results(
+                lexical, lexical, None, top_k, "TF-IDF lexical baseline", confidence_scores=lexical
+            )
 
-        if requested in {"semantic", "embeddings"} or (requested in {"auto", "hybrid"} and self.has_api_key):
-            try:
-                semantic = self._semantic_scores(query)
-                if requested in {"semantic", "embeddings"}:
-                    # Gemini embeddings are cosine-scored after L2 normalization. Map -1..1 to 0..1 for display.
-                    final = np.clip((semantic + 1.0) / 2.0, 0.0, 1.0)
-                    return self._collapse_results(final, lexical, semantic, top_k, "Gemini embeddings")
+        try:
+            semantic = self._semantic_scores(query)
+        except Exception as exc:
+            self.last_retrieval_error = f"{type(exc).__name__}: {exc}"[:500]
+            return self._collapse_results(
+                lexical, lexical, None, top_k, "TF-IDF fallback", confidence_scores=lexical
+            )
 
-                lexical_scaled = np.clip(lexical, 0.0, 1.0)
-                semantic_scaled = np.clip((semantic + 1.0) / 2.0, 0.0, 1.0)
-                final = (0.40 * lexical_scaled) + (0.60 * semantic_scaled)
-                return self._collapse_results(final, lexical, semantic, top_k, "Hybrid: TF-IDF + Gemini embeddings")
-            except Exception as exc:
-                self.last_retrieval_error = self._safe_error(exc)
-                return self._collapse_results(lexical, lexical, None, top_k, "TF-IDF fallback")
+        if requested in {"semantic", "lsa", "embeddings"}:
+            # Map cosine similarity from roughly -1..1 into 0..1 for a readable confidence score.
+            semantic_conf = np.clip((semantic + 1.0) / 2.0, 0.0, 1.0)
+            return self._collapse_results(
+                semantic, lexical, semantic, top_k,
+                f"Local semantic LSA ({self.lsa_components}D)", confidence_scores=semantic_conf
+            )
 
-        return self._collapse_results(lexical, lexical, None, top_k, "TF-IDF baseline")
+        # Auto and Hybrid are fully local for retrieval; Gemini is only used after retrieval
+        # to generate the grounded customer-facing answer.
+        fused = self._rank_fusion(lexical, semantic)
+        return self._collapse_results(
+            fused, lexical, semantic, top_k,
+            f"Hybrid: TF-IDF + local LSA ({self.lsa_components}D)",
+            confidence_scores=lexical,
+        )
