@@ -62,7 +62,7 @@ class KnowledgeBase:
         self.keyword_matrix = self.keyword_vectorizer.fit_transform(self.keyword_text)
 
         # Local semantic layer: Latent Semantic Analysis (TF-IDF -> TruncatedSVD).
-        # This produces dense concept vectors without consuming any external embedding API quota.
+        # This produces dense concept vectors locally for semantic similarity.
         requested_components = int(os.getenv("LSA_COMPONENTS", "64"))
         max_components = max(2, min(self.tfidf_matrix.shape[0] - 1, self.tfidf_matrix.shape[1] - 1))
         self.lsa_components = max(2, min(requested_components, max_components))
@@ -80,15 +80,6 @@ class KnowledgeBase:
     def has_api_key(self) -> bool:
         # The API key is only required for Gemini response generation, not retrieval.
         return bool(os.getenv("GEMINI_API_KEY", "").strip())
-
-    def semantic_healthcheck(self) -> tuple[bool, str]:
-        """Verify that the local dense semantic retriever is ready."""
-        try:
-            q = self._semantic_scores("customer support delivery question")
-            ok = q.shape == (len(self.df),) and np.isfinite(q).all()
-            return ok, f"Local semantic retriever OK: LSA ({self.lsa_components} dimensions)"
-        except Exception as exc:
-            return False, f"{type(exc).__name__}: {exc}"[:500]
 
     def _lexical_scores(self, query: str) -> np.ndarray:
         word_full = cosine_similarity(self.vectorizer.transform([query]), self.tfidf_matrix).flatten()

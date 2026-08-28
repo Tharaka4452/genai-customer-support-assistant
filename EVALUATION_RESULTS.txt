@@ -1,6 +1,6 @@
 # Retrieval Evaluation Results
 
-Generated UTC: 2026-08-28 04:51:23
+Generated UTC: 2026-08-28 05:03:50
 
 ## MODE: tfidf
 Requested mode: tfidf
@@ -19,4 +19,3 @@ Requested mode: hybrid
 Actual mode: Hybrid: TF-IDF + local LSA (64D)
 Top-1 accuracy: 65.0% (39/60)
 Top-3 accuracy: 86.7% (52/60)
-

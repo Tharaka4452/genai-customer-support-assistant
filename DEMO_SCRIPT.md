@@ -47,7 +47,7 @@ Someone changed details on my account and I think it was hacked.
 
 Open the evidence panel and Architecture tab.
 
-Explain that TF-IDF is retained as a reproducible lexical baseline. The advanced semantic layer uses local Latent Semantic Analysis (TruncatedSVD) to create dense concept vectors without consuming embedding API quota. Hybrid mode combines lexical ranking with the local semantic signal, while Gemini is used only to generate the grounded customer-facing response.
+Explain that TF-IDF is retained as a reproducible lexical baseline. The advanced semantic layer uses local Latent Semantic Analysis (TruncatedSVD) to create dense concept vectors locally without requiring a separate embedding service. Hybrid mode combines lexical ranking with the local semantic signal, while Gemini is used only to generate the grounded customer-facing response.
 
 ## 5. Evaluation
 
@@ -59,7 +59,7 @@ Explain:
 - TF-IDF baseline: Top-1 **65.0%**, Top-3 **86.7%**
 - Local LSA semantic-only: Top-1 **53.3%**, Top-3 **81.7%**
 - Hybrid TF-IDF + LSA: Top-1 **65.0%**, Top-3 **86.7%**
-- explain that the small synthetic FAQ dataset favors the tuned lexical baseline, while LSA adds a quota-free semantic signal and the hybrid design remains robust
+- explain that the small synthetic FAQ dataset favors the tuned lexical baseline, while LSA adds a local semantic signal and the hybrid design remains robust
 
 ## 6. Analytics
 

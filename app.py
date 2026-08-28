@@ -123,8 +123,6 @@ with tab_chat:
             )
             if kb.last_retrieval_error:
                 st.warning("Local semantic retrieval was unavailable; the safe TF-IDF fallback was used.")
-                with st.expander("Retrieval diagnostic"):
-                    st.code(kb.last_retrieval_error, language=None)
 
             with st.expander("Evidence: retrieved approved policies", expanded=True):
                 for source in retrieved:
@@ -256,7 +254,7 @@ SQLite Observability Log → Streamlit Analytics
     st.subheader("Why this is stronger than a basic chatbot")
     st.markdown("""
 - **Baseline + advanced comparison:** TF-IDF remains as a measurable lexical baseline.
-- **Local semantic RAG:** Latent Semantic Analysis (TruncatedSVD) creates dense concept vectors without external embedding quota.
+- **Local semantic RAG:** Latent Semantic Analysis (TruncatedSVD) creates dense concept vectors locally without a separate embedding service.
 - **Hybrid scoring:** lexical and semantic evidence are combined instead of relying on one signal.
 - **Policy-aware safety:** escalation labels from the dataset are enforced after LLM generation.
 - **Grounded answers:** the model is instructed to use only retrieved approved policy content.

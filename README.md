@@ -1,14 +1,14 @@
 # GenAI Customer Support Assistant with RAG and Analytics
 
-This deployment uses **Gemini for grounded answer generation** and **local Latent Semantic Analysis (LSA) for semantic retrieval**, avoiding embedding-API quota dependency in the live demo.
+This project uses **Gemini for grounded answer generation** and **local Latent Semantic Analysis (LSA) for semantic retrieval**.
 
 A deployment-ready Generative AI customer-support prototype built with **Streamlit**, **Gemini API**, retrieval-augmented generation (RAG), deterministic escalation guardrails, evaluation, and analytics.
 
 ## Live Demo
 
-**Streamlit deployment URL:** `ADD_AFTER_DEPLOYMENT`
+**Streamlit deployment URL:** https://genai-customer-support-assistant-knhv3lvpvmuaftzq98643q.streamlit.app/
 
-> Replace the placeholder above with the real `https://...streamlit.app` URL after deploying the project. Never place an API key in this README or in the GitHub repository.
+The API key is stored only in Streamlit Secrets and is not included in the source code or submission package.
 
 ## Business use case
 
@@ -97,7 +97,7 @@ Measured on the included 60-query held-out evaluation set:
 
 ### 2. Local semantic retrieval (LSA)
 
-The advanced retrieval layer uses **Latent Semantic Analysis (LSA)** implemented with scikit-learn `TruncatedSVD`. It converts the TF-IDF document matrix into dense concept vectors and compares customer queries using cosine similarity. This semantic layer runs locally, so the live deployment does not depend on a separate embedding API quota.
+The advanced retrieval layer uses **Latent Semantic Analysis (LSA)** implemented with scikit-learn `TruncatedSVD`. It converts the TF-IDF document matrix into dense concept vectors and compares customer queries using cosine similarity. This semantic layer runs locally and does not require a separate external embedding service.
 
 Measured semantic-only result:
 
@@ -270,9 +270,9 @@ RETRIEVAL_CONFIDENCE_THRESHOLD = "0.08"
 
 Do not create or commit a real `.streamlit/secrets.toml` file to GitHub.
 
-### 4. Deploy and update this README
+### 4. Deploy
 
-After deployment, Streamlit will provide a public `https://...streamlit.app` URL. Replace `ADD_AFTER_DEPLOYMENT` in the **Live Demo** section with that actual URL before the final internship submission.
+Deploy the app from `app.py`. The live application is available at the URL shown in the **Live Demo** section above. Keep the Gemini key only in Streamlit Secrets.
 
 Official Streamlit deployment documentation: https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app
 
@@ -292,7 +292,7 @@ Recommended flow:
 ## Limitations
 
 - The knowledge base is synthetic rather than a real company's approved documentation.
-- Gemini answer generation requires network access, a valid API key and available generation quota; retrieval itself is local and quota-independent.
+- Gemini answer generation requires network access and a valid API key; retrieval itself runs locally.
 - Sentiment and urgency classification are prototype-level.
 - SQLite analytics on a free cloud deployment should be treated as demonstration data and may not provide production-grade persistence.
 - The prototype has no authentication, CRM connection, order database or real customer identity data.
@@ -307,7 +307,3 @@ Recommended flow:
 - integrate with CRM/ticketing systems
 - add agent feedback and correction loops
 - add authentication and production observability
-
-## Submission security note
-
-The submission must not contain a real API key, `.env` file, Streamlit secrets file, embedding cache, local database, virtual environment, or generated Python cache files.
